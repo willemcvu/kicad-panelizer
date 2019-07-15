@@ -21,8 +21,8 @@ This script is very much in-progress, and so here's an extensive TODO list:
 SCALE = 1000000
 
 # Input/output files
-sourceBoardFile = r'./turbo_interface.kicad_pcb'
-panelOutputFile = r'./turbo_interface-panelized.kicad_pcb'
+sourceBoardFile = r'/path/to/source_file.kicad_pcb'
+panelOutputFile = r'/path/to/output_file.kicad_pcb'
 
 # number of copies of source board on panel in X and Y directions
 NUM_X = 6
