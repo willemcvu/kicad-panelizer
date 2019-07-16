@@ -25,12 +25,12 @@ sourceBoardFile = r'/path/to/source_file.kicad_pcb'
 panelOutputFile = r'/path/to/output_file.kicad_pcb'
 
 # number of copies of source board on panel in X and Y directions
-NUM_X = 6
+NUM_X = 4
 NUM_Y = 4
 
 # edge rail dimensions
-HORIZONTAL_EDGE_RAIL_WIDTH = 20
-VERTICAL_EDGE_RAIL_WIDTH = 20
+HORIZONTAL_EDGE_RAIL_WIDTH = 0
+VERTICAL_EDGE_RAIL_WIDTH = 10
 
 #v-scoring parameters
 V_SCORE_LAYER = "Eco1.User"
@@ -246,24 +246,25 @@ edge.SetLayer(layertable["Edge.Cuts"])
 
 print("New Edge.Cuts created.")
 
-#re-calculate board dimensions with new edge cuts
+# re-calculate board dimensions with new edge cuts
 panelWidth = board.GetBoardEdgesBoundingBox().GetWidth()
 panelHeight = board.GetBoardEdgesBoundingBox().GetHeight()
 panelCenter = arrayCenter #should be the same as arrayCenter
 
-#V-scoring lines
+# V-scoring lines
 
-#absolute edges of v-scoring
+# absolute edges of v-scoring
 vscore_top = panelCenter.y - panelHeight/2 - V_SCORE_LINE_LENGTH_BEYOND_BOARD*SCALE
 vscore_bottom = panelCenter.y + panelHeight/2 + V_SCORE_LINE_LENGTH_BEYOND_BOARD*SCALE
 vscore_right = panelCenter.x + panelWidth/2 + V_SCORE_LINE_LENGTH_BEYOND_BOARD*SCALE
 vscore_left = panelCenter.x - panelWidth/2 - V_SCORE_LINE_LENGTH_BEYOND_BOARD*SCALE
 
-#vertical v-scores
-for x in range(0,NUM_X+1):
+v_scores = []
+# vertical v-scores
+for x in range(1,NUM_X):
     x_loc = panelCenter.x - panelWidth/2 + HORIZONTAL_EDGE_RAIL_WIDTH*SCALE + boardWidth*x
     v_score_line = pcbnew.DRAWSEGMENT(board)
-    board.Add(v_score_line)
+    v_scores.append(v_score_line)
     v_score_line.SetStart(pcbnew.wxPoint(x_loc, vscore_top))
     v_score_line.SetEnd(pcbnew.wxPoint(x_loc, vscore_bottom))
     v_score_line.SetLayer(layertable[V_SCORE_LAYER])
@@ -279,11 +280,11 @@ for x in range(0,NUM_X+1):
 
 print("Vertical v-scores created.")
     
-#horizontal v-scores
-for y in range(1,NUM_Y+2):
-    y_loc = panelCenter.y - panelWidth/2 + VERTICAL_EDGE_RAIL_WIDTH*SCALE + boardWidth*y
+# horizontal v-scores
+for y in range(0,NUM_Y+1):
+    y_loc = panelCenter.y - panelHeight/2 + VERTICAL_EDGE_RAIL_WIDTH*SCALE + boardWidth*y
     v_score_line = pcbnew.DRAWSEGMENT(board)
-    board.Add(v_score_line)
+    v_scores.append(v_score_line)
     v_score_line.SetStart(pcbnew.wxPoint(vscore_left, y_loc))
     v_score_line.SetEnd(pcbnew.wxPoint(vscore_right, y_loc))
     v_score_line.SetLayer(layertable[V_SCORE_LAYER])
@@ -299,11 +300,26 @@ for y in range(1,NUM_Y+2):
 
 print("Horizontal v-scores created.")
 
+# In order to make sure copper is pulled-back from the v-score, we can move the v-scores to the edge.cuts layer, re-fill zones, then move them back. 
+# Also, lock all the zones to ensure they can't get refilled and therefore messed up.
+
+# move vscores to edge.cuts layer
+for vscore in v_scores:
+    vscore.SetLayer(layertable["Edge.Cuts"])
+    board.Add(vscore)
+
+# refill zones
+pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+
+# move back to correct layer
+for vscore in v_scores:
+    vscore.SetLayer(layertable[V_SCORE_LAYER])
+
 # Save output
 board.Save(panelOutputFile)
 print("Board output saved to " + panelOutputFile)
 
-#Report
+# Print report
 print("\nREPORT:")
 print("Board dimensions: " + str(boardWidth/SCALE) + "x" + str(boardHeight/SCALE) + "mm")
 print("Panel dimensions: " + str(panelWidth/SCALE) + "x" + str(panelHeight/SCALE) + "mm")
