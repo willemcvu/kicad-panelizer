@@ -201,6 +201,7 @@ print("\n")
 i = 0
 for zone in newZones:  # add new objects to board
     board.Add(zone)
+    i += 1
     progress(i, len(newZones), 'Adding new zones to board')
 
 print("\n")
