@@ -6,7 +6,6 @@ from pcbnew import *
 """
 A simple script to create a v-scored panel of a KiCad board.
 Author: Willem Hillier
-
 This script is very much in-progress, and so here's an extensive TODO list:
     - Put report in panel file in a text field
     - Put logo/text block on panel border
@@ -14,7 +13,6 @@ This script is very much in-progress, and so here's an extensive TODO list:
     - Auto-calculate distance from line to text center ("V-SCORE") based on text size
     - Is there a way to pull back copper layers to the pullback distances so if the user presses "b" on the panel, it doesn't get wrecked (by copper getting too close to V-scores)
     - (maybe) Make a "DRC" that checks if copper is too close to V-score lines
-
 """
 # To scale KiCad's nm to mm
 # All dimension parameters used by this script are mm unless otherwise noted
@@ -188,13 +186,12 @@ for a in range(0,board.GetAreaCount()):       # Iterate through each object to b
             progress(i, n, 'Determining nets of zones')
             if((x!=0)or(y!=0)):                     # Don't duplicate source object to location
                 newZone = sourceZone.Duplicate()
+                newZone.SetNet(sourceZone.GetNet())
                 newZone.Move(wxPoint(x*boardWidth, y*boardWidth)) # Move to correct location
-                newZones.append(newZone)              # Add to temporary list of objects
 
-                for module in modules:
-                    for pad in module.Pads():
-                        if newZone.HitTestInsideZone(pad.GetPosition()) and pad.IsOnLayer(newZone.GetLayer()):
-                            newZone.SetNetCode(pad.GetNet().GetNet())  # A hacky way to set the net for the zone...
+                # simulate pullback distance
+
+                newZones.append(newZone)              # Add to temporary list of objects
 
 print("\n")
 
@@ -309,7 +306,7 @@ for vscore in v_scores:
     board.Add(vscore)
 
 # refill zones
-pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+#pcbnew.ZONE_FILLER(board).Fill(board.Zones())
 
 # move back to correct layer
 for vscore in v_scores:
