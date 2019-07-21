@@ -1,8 +1,9 @@
 import os
 import sys
+from argparse import ArgumentParser
+from pathlib import Path
 import pcbnew
 from pcbnew import *
-
 """
 A simple script to create a v-scored panel of a KiCad board.
 Author: Willem Hillier
@@ -14,13 +15,25 @@ This script is very much in-progress, and so here's an extensive TODO list:
     - Is there a way to pull back copper layers to the pullback distances so if the user presses "b" on the panel, it doesn't get wrecked (by copper getting too close to V-scores)
     - (maybe) Make a "DRC" that checks if copper is too close to V-score lines
 """
+
+# set up command-line arguments parser
+parser = ArgumentParser(description="A script to panelize KiCad files.")
+parser.add_argument(dest="sourceBoardFile", help='Path to the *.kicad_pcb file to be panelized')
+args = parser.parse_args()
+sourceBoardFile = args.sourceBoardFile
+
+#Check that input board is a *.kicad_pcb file
+sourceFileExtension = os.path.splitext(sourceBoardFile)[1]
+if not(sourceFileExtension == '.kicad_pcb'):
+    print(sourceBoardFile + " is not a *.kicad_pcb file. Quitting.")
+    quit()
+
+# Output file name is format {inputFile}_panelized.kicad_pcb
+panelOutputFile = os.path.splitext(sourceBoardFile)[0] + "_panelized.kicad_pcb"
+
 # To scale KiCad's nm to mm
 # All dimension parameters used by this script are mm unless otherwise noted
 SCALE = 1000000
-
-# Input/output files
-sourceBoardFile = r'/path/to/source_file.kicad_pcb'
-panelOutputFile = r'/path/to/output_file.kicad_pcb'
 
 # number of copies of source board on panel in X and Y directions
 NUM_X = 4
