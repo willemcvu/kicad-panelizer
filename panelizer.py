@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import sys
 from argparse import ArgumentParser
@@ -19,8 +21,13 @@ This script is very much in-progress, and so here's an extensive TODO list:
 # set up command-line arguments parser
 parser = ArgumentParser(description="A script to panelize KiCad files.")
 parser.add_argument(dest="sourceBoardFile", help='Path to the *.kicad_pcb file to be panelized')
+parser.add_argument(dest="x", type=int, help='Number of boards in X direction')
+parser.add_argument(dest="y", type=int, help='Number of boards in Y direction')
+parser.add_argument("-v", "--verbose", action='store_true', help='Show progress')
 args = parser.parse_args()
 sourceBoardFile = args.sourceBoardFile
+NUM_X = args.x
+NUM_Y = args.y
 
 #Check that input board is a *.kicad_pcb file
 sourceFileExtension = os.path.splitext(sourceBoardFile)[1]
@@ -35,13 +42,9 @@ panelOutputFile = os.path.splitext(sourceBoardFile)[0] + "_panelized.kicad_pcb"
 # All dimension parameters used by this script are mm unless otherwise noted
 SCALE = 1000000
 
-# number of copies of source board on panel in X and Y directions
-NUM_X = 4
-NUM_Y = 4
-
 # edge rail dimensions
 HORIZONTAL_EDGE_RAIL_WIDTH = 0
-VERTICAL_EDGE_RAIL_WIDTH = 10
+VERTICAL_EDGE_RAIL_WIDTH = 5
 
 #v-scoring parameters
 V_SCORE_LAYER = "Eco1.User"
@@ -75,7 +78,7 @@ def progress(count, total, suffix=''):
 
 #load source board
 board = LoadBoard(sourceBoardFile)
-print('Loaded board\n')
+if args.verbose: print('Loaded board\n')
 
 # set up layer table
 layertable = get_layertable()
@@ -102,17 +105,17 @@ for sourceTrack in tracks:                          # Iterate through each track
             i += 1
             if((x!=0)or(y!=0)):                     # Don't duplicate source object to location
                 newTrack = sourceTrack.Duplicate()
-                newTrack.Move(wxPoint(x*boardWidth, y*boardWidth)) # Move to correct location
+                newTrack.Move(wxPoint(x*boardWidth, y*boardHeight)) # Move to correct location
                 newTracks.append(newTrack)          # Add to temporary list of tracks
-                progress(i ,n*NUM_X*NUM_Y,'Positioning tracks')                    # Progress bar
+                if args.verbose: progress(i ,n*NUM_X*NUM_Y,'Positioning tracks')                    # Progress bar
 
-print("\n")
+if args.verbose: print("\n")
 
 i=0
 for track in newTracks:  # add new tracks to board
     tracks.Append(track)
     i += 1
-    progress(i, len(newTracks), 'Adding tracks to panel' )
+    if args.verbose: progress(i, len(newTracks), 'Adding tracks to panel' )
     
 
 # array of drawing objects
@@ -131,20 +134,20 @@ for drawing in drawings:                          # Iterate through each object 
             i += 1
             if((x!=0)or(y!=0)):                     # Don't duplicate source object to location
                 newDrawing = drawing.Duplicate()
-                newDrawing.Move(wxPoint(x*boardWidth, y*boardWidth)) # Move to correct location
+                newDrawing.Move(wxPoint(x*boardWidth, y*boardHeight)) # Move to correct location
                 newDrawings.append(newDrawing)              # Add to temporary list of objects
-                progress(i ,n*NUM_X*NUM_Y,'Positioning drawings')                    # Progress bar
+                if args.verbose: progress(i ,n*NUM_X*NUM_Y,'Positioning drawings')                    # Progress bar
 
-print("\n")
+if args.verbose: print("\n")
 
 i=0
 for drawing in newDrawings:  # add new objects to board
     board.Add(drawing)
     i += 1
-    progress(i ,len(newDrawings),'Adding drawings to panel')                    # Progress bar
+    if args.verbose: progress(i ,len(newDrawings),'Adding drawings to panel')                    # Progress bar
 
 
-print("\n")
+if args.verbose: print("\n")
 
 # array of modules
 modules = board.GetModules()
@@ -163,19 +166,19 @@ for sourceModule in modules:                                        # Iterate th
             i += 1
             if((x!=0)or(y!=0)):                                     # Don't duplicate source object to location
                 newModule = pcbnew.MODULE(sourceModule)
-                newModule.SetPosition(wxPoint(x*boardWidth + sourceModule.GetPosition().x, y*boardWidth + sourceModule.GetPosition().y)) # Move to correct location
+                newModule.SetPosition(wxPoint(x*boardWidth + sourceModule.GetPosition().x, y*boardHeight + sourceModule.GetPosition().y)) # Move to correct location
                 newModules.append(newModule)                        # Add to temporary list of objects
-                progress(i ,n*NUM_X*NUM_Y,'Positioning modules')                    # Progress bar
+                if args.verbose: progress(i ,n*NUM_X*NUM_Y,'Positioning modules')                    # Progress bar
 
-print("\n")
+if args.verbose: print("\n")
 
 i = 0
 for module in newModules:  # add new objects to board
     board.Add(module)
     i += 1
-    progress(i, len(newModules), 'Adding modules to panel')
+    if args.verbose: progress(i, len(newModules), 'Adding modules to panel')
 
-print("\n")
+if args.verbose: print("\n")
 
 # array of zones
 modules = board.GetModules()                  #used to extract nets for zones...
@@ -196,25 +199,25 @@ for a in range(0,board.GetAreaCount()):       # Iterate through each object to b
     for x in range(0,NUM_X):                    # Iterate through x direction
         for y in range(0, NUM_Y):               # Iterate through y direction
             i += 1
-            progress(i, n, 'Determining nets of zones')
+            if args.verbose: progress(i, n, 'Determining nets of zones')
             if((x!=0)or(y!=0)):                     # Don't duplicate source object to location
                 newZone = sourceZone.Duplicate()
                 newZone.SetNet(sourceZone.GetNet())
-                newZone.Move(wxPoint(x*boardWidth, y*boardWidth)) # Move to correct location
+                newZone.Move(wxPoint(x*boardWidth, y*boardHeight)) # Move to correct location
 
                 # simulate pullback distance
 
                 newZones.append(newZone)              # Add to temporary list of objects
 
-print("\n")
+if args.verbose: print("\n")
 
 i = 0
 for zone in newZones:  # add new objects to board
     board.Add(zone)
     i += 1
-    progress(i, len(newZones), 'Adding new zones to board')
+    if args.verbose: progress(i, len(newZones), 'Adding new zones to board')
 
-print("\n")
+if args.verbose: print("\n")
 
 # Get dimensions and center coordinate of entire array (without siderails to be added shortly)
 arrayWidth = board.GetBoardEdgesBoundingBox().GetWidth()
@@ -227,34 +230,39 @@ for drawing in drawings:                          # Iterate through each object 
     if(drawing.IsOnLayer(layertable["Edge.Cuts"])):
         drawing.DeleteStructure()
 
-print("Existing Edge.Cuts lines deleted.")
+if args.verbose: print("Existing Edge.Cuts lines deleted.")
 
 # Create actual Edge.Cuts perimeter
+
+# top
 edge = pcbnew.DRAWSEGMENT(board)
 board.Add(edge)
 edge.SetStart(pcbnew.wxPoint(arrayCenter.x - arrayWidth/2 - HORIZONTAL_EDGE_RAIL_WIDTH*SCALE, arrayCenter.y - arrayHeight/2 - VERTICAL_EDGE_RAIL_WIDTH*SCALE))
 edge.SetEnd( pcbnew.wxPoint(arrayCenter.x + arrayWidth/2 + HORIZONTAL_EDGE_RAIL_WIDTH*SCALE, arrayCenter.y - arrayHeight/2 - VERTICAL_EDGE_RAIL_WIDTH*SCALE))
 edge.SetLayer(layertable["Edge.Cuts"])
 
+# right
 edge = pcbnew.DRAWSEGMENT(board)
 board.Add(edge)
 edge.SetStart(pcbnew.wxPoint(arrayCenter.x + arrayWidth/2 + HORIZONTAL_EDGE_RAIL_WIDTH*SCALE, arrayCenter.y - arrayHeight/2 - VERTICAL_EDGE_RAIL_WIDTH*SCALE))
 edge.SetEnd( pcbnew.wxPoint(arrayCenter.x + arrayWidth/2 + HORIZONTAL_EDGE_RAIL_WIDTH*SCALE, arrayCenter.y + arrayHeight/2 + VERTICAL_EDGE_RAIL_WIDTH*SCALE))
 edge.SetLayer(layertable["Edge.Cuts"])
 
+# bottom
 edge = pcbnew.DRAWSEGMENT(board)
 board.Add(edge)
 edge.SetStart( pcbnew.wxPoint(arrayCenter.x + arrayWidth/2 + HORIZONTAL_EDGE_RAIL_WIDTH*SCALE, arrayCenter.y + arrayHeight/2 + VERTICAL_EDGE_RAIL_WIDTH*SCALE))
 edge.SetEnd( pcbnew.wxPoint(arrayCenter.x - arrayWidth/2 - HORIZONTAL_EDGE_RAIL_WIDTH*SCALE, arrayCenter.y + arrayHeight/2 + VERTICAL_EDGE_RAIL_WIDTH*SCALE))
 edge.SetLayer(layertable["Edge.Cuts"])
 
+# left
 edge = pcbnew.DRAWSEGMENT(board)
 board.Add(edge)
 edge.SetStart( pcbnew.wxPoint(arrayCenter.x - arrayWidth/2 - HORIZONTAL_EDGE_RAIL_WIDTH*SCALE, arrayCenter.y + arrayHeight/2 + VERTICAL_EDGE_RAIL_WIDTH*SCALE))
 edge.SetEnd( pcbnew.wxPoint(arrayCenter.x - arrayWidth/2 - HORIZONTAL_EDGE_RAIL_WIDTH*SCALE, arrayCenter.y - arrayHeight/2 - VERTICAL_EDGE_RAIL_WIDTH*SCALE))
 edge.SetLayer(layertable["Edge.Cuts"])
 
-print("New Edge.Cuts created.")
+if args.verbose: print("New Edge.Cuts created.")
 
 # re-calculate board dimensions with new edge cuts
 panelWidth = board.GetBoardEdgesBoundingBox().GetWidth()
@@ -288,11 +296,11 @@ for x in range(1,NUM_X):
     v_score_text.SetTextAngle(900)
     board.Add(v_score_text)
 
-print("Vertical v-scores created.")
-    
+if args.verbose: print("Vertical v-scores created.")
+
 # horizontal v-scores
 for y in range(0,NUM_Y+1):
-    y_loc = panelCenter.y - panelHeight/2 + VERTICAL_EDGE_RAIL_WIDTH*SCALE + boardWidth*y
+    y_loc = panelCenter.y - panelHeight/2 + VERTICAL_EDGE_RAIL_WIDTH*SCALE + boardHeight*y
     v_score_line = pcbnew.DRAWSEGMENT(board)
     v_scores.append(v_score_line)
     v_score_line.SetStart(pcbnew.wxPoint(vscore_left, y_loc))
@@ -308,7 +316,7 @@ for y in range(0,NUM_Y+1):
     v_score_text.SetTextAngle(0)
     board.Add(v_score_text)
 
-print("Horizontal v-scores created.")
+if args.verbose: print("Horizontal v-scores created.")
 
 # In order to make sure copper is pulled-back from the v-score, we can move the v-scores to the edge.cuts layer, re-fill zones, then move them back. 
 # Also, lock all the zones to ensure they can't get refilled and therefore messed up.
