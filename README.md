@@ -1,6 +1,8 @@
 # kicad-panelizer
 A simple script to create a v-scored panel of a KiCad board.
 
+#### My original copy of this script is depreciated. Please use this instead: https://github.com/sej7278/kicad-panelizer
+
 To use:
 1. Ensure you have KiCad 5.1.2+ installed
 2. Clone script to an appropriate location
